@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="DiscUtils.Fat" Version="0.16.4" />
+      <PackageReference Include="LibHac" Version="0.13.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DiskCore\DiskCore.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaveSwitchCLI", "SaveSwitchCLI\SaveSwitchCLI.csproj", "{09E253B8-407F-4B37-B173-87EE16A8E444}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaveSwitchCore", "SaveSwitchCore\SaveSwitchCore.csproj", "{11447683-BCBD-4FAB-9985-6362EFA83902}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiskCore", "DiskCore\DiskCore.csproj", "{1A268395-9E30-4EE2-AF52-6FBAA1B1C0D3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{09E253B8-407F-4B37-B173-87EE16A8E444}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09E253B8-407F-4B37-B173-87EE16A8E444}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09E253B8-407F-4B37-B173-87EE16A8E444}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09E253B8-407F-4B37-B173-87EE16A8E444}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11447683-BCBD-4FAB-9985-6362EFA83902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11447683-BCBD-4FAB-9985-6362EFA83902}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11447683-BCBD-4FAB-9985-6362EFA83902}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11447683-BCBD-4FAB-9985-6362EFA83902}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A268395-9E30-4EE2-AF52-6FBAA1B1C0D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A268395-9E30-4EE2-AF52-6FBAA1B1C0D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A268395-9E30-4EE2-AF52-6FBAA1B1C0D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A268395-9E30-4EE2-AF52-6FBAA1B1C0D3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
