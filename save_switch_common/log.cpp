@@ -1,4 +1,5 @@
 #include "log.h"
+#include "terminal.h"
 #include <iostream>
 
 #ifdef SWITCH
@@ -8,7 +9,7 @@
 #endif
 
 void log::info(const std::string &message) {
-    std::cout << "[INFO] " << message << std::endl;
+    std::cout << "[" << term::color::cyan << "INFO" << term::reset << "] " << message << std::endl;
 
 #ifdef SWITCH
     consoleUpdate(nullptr);
@@ -16,7 +17,7 @@ void log::info(const std::string &message) {
 }
 
 void log::error(const std::string &message) {
-    std::cout << "[ERROR] " << message << std::endl;
+    std::cout << "[" << term::color::red << "ERROR" << term::reset << "] " << message << std::endl;
 
 #ifdef SWITCH
     consoleUpdate(nullptr);
