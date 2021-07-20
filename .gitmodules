@@ -1,0 +1,9 @@
+[submodule "lib/switch-cmake"]
+	path = lib/switch-cmake
+	url = https://github.com/vbe0201/switch-cmake
+[submodule "lib/json"]
+	path = lib/json
+	url = https://github.com/nlohmann/json
+[submodule "lib/cereal"]
+	path = lib/cereal
+	url = https://github.com/osum4est/cereal

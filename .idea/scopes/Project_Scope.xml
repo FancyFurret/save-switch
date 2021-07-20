@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Project Scope" pattern="file[SaveSwitch]:*/&amp;&amp;!file[SaveSwitch]:lib//*&amp;&amp;!file[SaveSwitch]:save_switch_nx/lib//*" />
+</component>
