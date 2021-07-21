@@ -1,5 +1,4 @@
 #include "switch_data.h"
-#include <cstring>
 
 void switch_data::load() {
     FsSaveDataInfoReader reader;
@@ -21,8 +20,8 @@ void switch_data::load() {
         if (info.save_data_type != FsSaveDataType_Account)
             continue;
 
-        uint64_t tid = info.application_id;
-        uint64_t sid = info.save_data_id;
+        std::string tid = utils::to_hex_string(info.application_id);
+        std::string sid = utils::to_hex_string(info.save_data_id);
         std::string uid = switch_user::uid_to_string(info.uid);
 
         if (!_saves.contains(tid))
@@ -42,15 +41,15 @@ void switch_data::load() {
     fsSaveDataInfoReaderClose(&reader);
 }
 
-const std::unordered_map<std::string, switch_user> &switch_data::users() {
+const std::map<std::string, switch_user> &switch_data::users() {
     return _users;
 }
 
-const std::unordered_map<uint64_t, switch_app> &switch_data::apps() {
+const std::map<std::string, switch_app> &switch_data::apps() {
     return _apps;
 }
 
-const std::unordered_map<uint64_t, switch_save> &switch_data::saves() {
+const std::map<std::string, switch_save> &switch_data::saves() {
     return _saves;
 }
 

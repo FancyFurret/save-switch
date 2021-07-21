@@ -14,7 +14,7 @@ std::string http_response::get_header(const std::string &name) const {
 }
 
 std::string http_response::string() const {
-    return std::string(_data.begin(), _data.end());
+    return std::string(_data->begin(), _data->end());
 }
 
 nlohmann::json http_response::json() const {

@@ -1,10 +1,10 @@
-#ifndef SAVE_SWITCH_SAVE_STORAGE_ENTRY_H
-#define SAVE_SWITCH_SAVE_STORAGE_ENTRY_H
+#ifndef SAVE_SWITCH_CLOUD_STORAGE_ENTRY_H
+#define SAVE_SWITCH_CLOUD_STORAGE_ENTRY_H
 
 #include <filesystem>
 #include "filepath.h"
 
-class save_storage_entry {
+class cloud_storage_entry {
 public:
     enum type {
         file,
@@ -18,7 +18,7 @@ private:
     type _type;
 
 public:
-    save_storage_entry(const std::string &id, const filepath &path, type type)
+    cloud_storage_entry(const std::string &id, const filepath &path, type type)
             : _id(id),
               _name(path.filename()),
               _path(path),

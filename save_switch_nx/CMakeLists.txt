@@ -10,7 +10,9 @@ add_executable(${TARGET_NAME}
         switch/switch_data.h
         switch/switch_user.h
         switch/switch_app.h
-        switch/switch_save.h)
+        switch/switch_save.h
+        save_switch.cpp
+        save_switch.h)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
         APP_TITLE "SaveSwitch"

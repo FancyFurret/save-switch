@@ -8,5 +8,6 @@
 typedef nlohmann::json json;
 typedef std::unordered_map<std::string, std::string> headers;
 typedef std::unordered_map<std::string, std::string> params;
+typedef std::unique_ptr<const std::vector<uint8_t>> byte_array;
 
 #endif

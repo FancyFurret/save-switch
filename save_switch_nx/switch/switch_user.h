@@ -7,7 +7,7 @@
 class switch_user {
     std::string _id;
     std::string _name;
-    std::unordered_map<uint64_t, const switch_save &> _saves { };
+    std::map<std::string, const switch_save &> _saves { };
 
 public:
     explicit switch_user(AccountUid account_id) {
@@ -37,7 +37,7 @@ public:
         return _name;
     }
 
-    [[nodiscard]] const std::unordered_map<uint64_t, const switch_save &> &saves() const {
+    [[nodiscard]] const std::map<std::string, const switch_save &> &saves() const {
         return _saves;
     }
 

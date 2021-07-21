@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/cereal" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/fmt" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/switch-cmake" vcs="Git" />
   </component>

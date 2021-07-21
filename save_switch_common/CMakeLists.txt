@@ -1,29 +1,29 @@
 set(TARGET_NAME ${PROJECT_NAME}_common)
 
 add_library(${TARGET_NAME}
-        http_client/http_client.cpp
-        http_client/http_client.h
         log.cpp
         log.h
         utils.cpp
         utils.h
-        save_storage/google_drive/google_drive.cpp
-        save_storage/google_drive/google_drive.h
-        save_storage/google_drive/google_drive_cache.h
-        save_storage/save_storage_entry.h
-        save_storage/save_storage.cpp
-        save_storage/save_storage.h
-        save_storage/save_storage_errors.h
-        save_storage/save_storage_errors.h
-        save_storage/filepath.cpp
-        save_storage/filepath.h
         secrets.h
+        terminal.h
+        http_client/http_client.cpp
+        http_client/http_client.h
         http_client/http_response.cpp
         http_client/http_response.h
-        terminal.h
         http_client/http_request.cpp
         http_client/http_request.h
-        http_client/http_types.h)
+        http_client/http_types.h
+        cloud_storage/google_drive/google_drive.cpp
+        cloud_storage/google_drive/google_drive.h
+        cloud_storage/google_drive/google_drive_cache.h
+        cloud_storage/cloud_storage_entry.h
+        cloud_storage/cloud_storage.cpp
+        cloud_storage/cloud_storage.h
+        cloud_storage/cloud_storage_errors.h
+        cloud_storage/cloud_storage_errors.h
+        cloud_storage/filepath.cpp
+        cloud_storage/filepath.h)
 
 find_library(CURL_LIBRARY NAMES curl)
 target_link_libraries(${TARGET_NAME} ${CURL_LIBRARY})

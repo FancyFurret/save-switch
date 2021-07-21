@@ -22,6 +22,7 @@ public:
     http_request get(const std::string &url);
     http_request post(const std::string &url);
     http_request put(const std::string &url);
+    http_request patch(const std::string &url);
 
     std::unique_ptr<const http_response> send(const http_request &request);
 

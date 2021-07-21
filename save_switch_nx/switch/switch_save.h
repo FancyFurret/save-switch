@@ -5,13 +5,13 @@
 #include <switch.h>
 
 class switch_save {
-    uint64_t _id;
+    std::string _id;
     const switch_app &_app;
 
 public:
-    switch_save(switch_app *app, FsSaveDataInfo *info) : _id(info->save_data_id), _app(*app) { }
+    switch_save(switch_app *app, FsSaveDataInfo *info) : _id(utils::to_hex_string(info->save_data_id)), _app(*app) { }
 
-    [[nodiscard]] uint64_t id() const {
+    [[nodiscard]] std::string id() const {
         return _id;
     }
 

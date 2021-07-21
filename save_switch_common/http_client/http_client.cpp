@@ -30,6 +30,11 @@ http_request http_client::put(const std::string &url) {
     return http_request(this, url, http_request::method::put);
 }
 
+http_request http_client::patch(const std::string &url) {
+    log::info("Sending PATCH request to " + url);
+    return http_request(this, url, http_request::method::patch);
+}
+
 std::unique_ptr<const http_response> http_client::send(const http_request &request) {
     auto res = std::make_unique<http_response>();
 
@@ -38,7 +43,7 @@ std::unique_ptr<const http_response> http_client::send(const http_request &reque
     curl_easy_setopt(_curl, CURLOPT_VERBOSE, true);
 
     // URL
-    if (request._has_query)
+    if (!request._query.empty())
         curl_easy_setopt(_curl, CURLOPT_URL, (request._url + "?" + get_query_string(request._query)).c_str());
     else
         curl_easy_setopt(_curl, CURLOPT_URL, request._url.c_str());
@@ -53,6 +58,9 @@ std::unique_ptr<const http_response> http_client::send(const http_request &reque
         case http_request::put:
             curl_easy_setopt(_curl, CURLOPT_PUT, true);
             break;
+        case http_request::patch:
+            curl_easy_setopt(_curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+            break;
     }
 
     // Headers
@@ -64,7 +72,7 @@ std::unique_ptr<const http_response> http_client::send(const http_request &reque
     curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, headers);
 
     // Body
-    if (request._has_body) {
+    if (request._body != nullptr) {
         curl_easy_setopt(_curl, CURLOPT_INFILESIZE_LARGE, request._body->size());
         curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE_LARGE, request._body->size());
         curl_easy_setopt(_curl, CURLOPT_READDATA, request._body.get());
@@ -80,7 +88,7 @@ std::unique_ptr<const http_response> http_client::send(const http_request &reque
     }
 
     // Response Data
-    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res->_data);
+    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, res->_data.get());
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, static_cast<size_t (*)(char *, size_t, size_t, void *)>(
             [](char *ptr, size_t size, size_t nmemb, void *result_body) {
                 size_t size_in = size * nmemb;

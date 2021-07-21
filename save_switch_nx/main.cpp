@@ -1,10 +1,9 @@
 #include <switch.h>
-#include <save_switch_common/save_storage/google_drive/google_drive.h>
-#include <save_switch_nx/switch/switch_data.h>
 #include <save_switch_common/log.h>
 #include "config.h"
+#include "save_switch.h"
 
-int run_app() {
+void init() {
     consoleInit(nullptr);
     socketInitializeDefault();
     appletInitialize();
@@ -12,61 +11,61 @@ int run_app() {
     hidInitialize();
     accountInitialize(AccountServiceType_System);
 
+#ifdef SS_DEBUG
     nxlinkStdio();
+#endif
+}
 
-    printf("Welcome to SaveSwitch!\n");
+void exit() {
+    consoleExit(nullptr);
+    socketExit();
+    appletExit();
+    nsExit();
+    hidExit();
+    accountExit();
+}
 
-    printf("Loading save_switch_nx config\n");
-    if (!std::filesystem::exists("/switch/SaveSwitch"))
-        std::filesystem::create_directory("/switch/SaveSwitch");
-    config config(std::filesystem::path("/switch/SaveSwitch/config.json"));
+void run_app() {
+    std::cout << "Welcome to SaveSwitch!" << std::endl;
 
-    auto *storage = new google_drive();
-    storage->init(&config);
+    save_switch ss;
+    ss.init();
+    ss.update_cloud_switch_info();
+}
 
-    if (!storage->is_authenticated()) {
-        printf("Google Drive is not authenticated!\n");
-        storage->authenticate();
-        config.save();
-        printf("Done!");
-    }
+void wait_for_exit() {
+    std::cout << "Press + to exit..." << std::endl;
 
-    printf("Getting SaveSwitch folder\n");
-    storage->create_directories("SaveSwitch/TestData");
+    PadState pad_state;
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(&pad_state);
 
-    printf("Uploading file...");
-    std::string file_contents = "Hello world this is a file uploaded from the magical switch :) 🎮";
-    storage->create_file("/SaveSwitch/TestData/hello_there.txt", file_contents, [](double p) {
-        log::info("Upload progress: " + std::to_string(std::floor((p * 100))) + "%");
-    });
-
-    printf("Loading save data from switch...");
-    switch_data data;
-//    data.load();
-    printf("Done!");
-
-    // Main loop
     while (appletMainLoop()) {
+        padUpdate(&pad_state);
+        u64 down = padGetButtonsDown(&pad_state);
+
+        if (down & HidNpadButton_Plus)
+            break;
+
         consoleUpdate(nullptr);
     }
 
-    socketExit();
-    consoleExit(nullptr);
-    delete storage;
-    return 0;
+    exit();
 }
 
 int main() {
+    init();
+
     // Run everything in a try-catch so the whole switch doesn't crash...
     try {
         run_app();
     } catch (const std::exception &e) {
-        log::error("Uncaught exception!");
+        log::error("Uncaught exception:");
         log::error(e.what());
-        while (appletMainLoop()) { consoleUpdate(nullptr); }
+    } catch (...) {
+        log::error("Unknown uncaught exception");
     }
-    catch (...) {
-        log::error("Unknown uncaught exception!");
-        while (appletMainLoop()) { consoleUpdate(nullptr); }
-    }
+
+    wait_for_exit();
+    return 0;
 }

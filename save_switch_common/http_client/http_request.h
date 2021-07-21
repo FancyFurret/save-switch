@@ -16,7 +16,8 @@ public:
     enum method {
         get,
         post,
-        put
+        put,
+        patch
     };
 
 private:
@@ -27,11 +28,8 @@ private:
 
     headers _headers;
 
-    bool _has_query = false;
     params _query;
-
-    bool _has_body = false;
-    std::unique_ptr<const std::vector<uint8_t>> _body = nullptr;
+    byte_array _body = nullptr;
 
 public:
     http_request(http_client *client, const std::string &url, method method);
@@ -44,12 +42,12 @@ public:
     http_request &set_body(const std::string &body);
     http_request &set_body(const nlohmann::json &body);
     http_request &set_body(const params &body);
-    http_request &set_body(std::unique_ptr<const std::vector<uint8_t>> body);
+    http_request &set_body(byte_array body);
 
     std::unique_ptr<const http_response> send();
 
 private:
-    http_request &set_body(const std::string& content_type, std::unique_ptr<const std::vector<uint8_t>> body);
+    http_request &set_body(const std::string &content_type, byte_array body);
 };
 
 #endif

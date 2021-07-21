@@ -11,7 +11,7 @@ class http_response {
     friend class http_client;
 
     int _code;
-    std::vector<uint8_t> _data;
+    byte_array _data = std::make_unique<const std::vector<uint8_t>>();
     headers _headers;
 
 public:

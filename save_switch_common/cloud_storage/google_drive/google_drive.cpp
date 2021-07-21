@@ -1,16 +1,15 @@
 #include "google_drive.h"
 #include <fmt/format.h>
-#include <save_switch_common/save_storage/save_storage_errors.h>
+#include <save_switch_common/cloud_storage/cloud_storage_errors.h>
 #include <save_switch_common/log.h>
 
-void google_drive::init(google_drive_cache *cache) {
-    log::info("Initializing Google Drive");
+google_drive::google_drive(google_drive_cache *cache) {
     _http_client.init();
     this->_cache = cache;
-    save_storage::init();
+    cloud_storage::init();
 }
 
-const save_storage_entry &google_drive::get_parent_entry(const save_storage_entry &parent, const std::string &name) {
+const cloud_storage_entry &google_drive::get_parent_entry(const cloud_storage_entry &parent, const std::string &name) {
     std::stringstream q;
     q << "name='" << name << "' and ";
     q << "'" << parent.id() << "' in parents and ";
@@ -31,7 +30,7 @@ const save_storage_entry &google_drive::get_parent_entry(const save_storage_entr
     return parse_json_entry(parent, file);
 }
 
-google_drive::entry_list google_drive::get_parent_entries(const save_storage_entry &parent) {
+google_drive::entry_list google_drive::get_parent_entries(const cloud_storage_entry &parent) {
     std::stringstream q;
     q << "'" << parent.id() << "' in parents and ";
     q << "trashed=false";
@@ -51,8 +50,8 @@ google_drive::entry_list google_drive::get_parent_entries(const save_storage_ent
     return entries;
 }
 
-const save_storage_entry &google_drive::create_parent_directory(const save_storage_entry &parent,
-                                                                const std::string &name) {
+const cloud_storage_entry &google_drive::create_parent_directory(const cloud_storage_entry &parent,
+                                                                 const std::string &name) {
     nlohmann::json res = _http_client.post("https://www.googleapis.com/drive/v3/files")
             .set_body(json {
                     { "parents",  { parent.id() }},
@@ -63,12 +62,12 @@ const save_storage_entry &google_drive::create_parent_directory(const save_stora
     return parse_json_entry(parent, res);
 }
 
-const save_storage_entry &google_drive::create_parent_file(const save_storage_entry &parent, const std::string &name,
-                                                           const std::vector<uint8_t> &bytes,
-                                                           const save_storage::progress_func &progress_func) {
+const cloud_storage_entry &google_drive::create_parent_file(const cloud_storage_entry &parent, const std::string &name,
+                                                            byte_array bytes,
+                                                            const cloud_storage::progress_func &progress_func) {
     auto res = _http_client.post("https://www.googleapis.com/upload/drive/v3/files")
             .set_header("X-Upload-Content-Type", "application/octet-stream")
-            .set_header("X-Upload-Content-Length", std::to_string(bytes.size()))
+            .set_header("X-Upload-Content-Length", std::to_string(bytes->size()))
             .set_query(params {
                     { "uploadType", "resumable" }
             })
@@ -78,44 +77,38 @@ const save_storage_entry &google_drive::create_parent_file(const save_storage_en
             }).send();
 
     if (!res->has_header("Location"))
-        throw std::runtime_error("Could not start file upload, no location header!");
+        throw std::runtime_error("Could not start file upload, no location header: " + res->string());
 
     std::string location = res->get_header("Location");
-
-    static const size_t chunk_size = 256 * 1024;
-    size_t total_length = bytes.size();
-
-    for (size_t pos = 0; pos < total_length; pos += chunk_size) {
-        size_t content_length = (pos + chunk_size) <= total_length ? chunk_size : total_length - pos;
-        std::string range = fmt::format("bytes {}-{}/{}", pos, pos + content_length - 1, total_length);
-        auto chunk = std::make_unique<std::vector<uint8_t>>(bytes.begin() + (long) pos,
-                                                            bytes.begin() + (long) pos + (long) content_length);
-
-        log::info("Uploading range " + range);
-        res = _http_client.put(location)
-                .set_header("Content-Length", std::to_string(content_length))
-                .set_header("Content-Range", range)
-                .set_body(std::move(chunk))
-                .send();
-
-        if (!res->ok())
-            throw std::runtime_error("Could not upload part of file! " + res->string());
-
-        progress_func((double) ((long double) (pos + content_length) / (long double) total_length));
-    }
-
-    return parse_json_entry(parent, res->json());
+    return parse_json_entry(parent, resumable_chunk_upload(location, std::move(bytes), progress_func)->json());
 }
 
-const save_storage_entry &google_drive::create_root_entry() {
-    return cache_entry(save_storage_entry("root", "", save_storage_entry::directory));
+const cloud_storage_entry &google_drive::update_parent_file(const cloud_storage_entry &entry, byte_array bytes,
+                                                            const cloud_storage::progress_func &progress_func) {
+    auto res = _http_client.patch("https://www.googleapis.com/upload/drive/v3/files/" + entry.id())
+            .set_header("X-Upload-Content-Type", "application/octet-stream")
+            .set_header("X-Upload-Content-Length", std::to_string(bytes->size()))
+            .set_query(params {
+                    { "uploadType", "resumable" }
+            }).send();
+
+    if (!res->has_header("Location"))
+        throw std::runtime_error("Could not start file upload, no location header: " + res->string());
+
+    std::string location = res->get_header("Location");
+    const cloud_storage_entry &parent = get_entry(entry.path().parent_path());
+    return parse_json_entry(parent, resumable_chunk_upload(location, std::move(bytes), progress_func)->json());
+}
+
+const cloud_storage_entry &google_drive::create_root_entry() {
+    return cache_entry(cloud_storage_entry("root", "", cloud_storage_entry::directory));
 }
 
 bool google_drive::is_authenticated() {
     return verify_access_token();
 }
 
-bool google_drive::authenticate() {
+void google_drive::authenticate() {
     nlohmann::json res = _http_client.post("https://oauth2.googleapis.com/device/code")
             .set_body(params {
                     { "client_id", GOOGLE_CLIENT_ID },
@@ -155,11 +148,11 @@ bool google_drive::authenticate() {
 
         if (verify_access_token())
             log::info("Verified token!");
-        return true;
+
+        return;
     }
 
-    log::info("Code has expired!");
-    return false;
+    throw std::runtime_error("Code has expired!");
 }
 
 bool google_drive::verify_access_token() {
@@ -214,10 +207,38 @@ void google_drive::ensure_ok(const json &res) {
     }
 }
 
-const save_storage_entry &google_drive::parse_json_entry(const save_storage_entry &parent, const json &entry) {
-    return cache_entry(save_storage_entry(
+std::unique_ptr<const http_response> google_drive::resumable_chunk_upload(const std::string &location, byte_array bytes,
+                                                                          const progress_func &progress_func) {
+    static const size_t chunk_size = 256 * 1024;
+    size_t total_length = bytes->size();
+    std::unique_ptr<const http_response> res;
+
+    for (size_t pos = 0; pos < total_length; pos += chunk_size) {
+        size_t content_length = (pos + chunk_size) <= total_length ? chunk_size : total_length - pos;
+        std::string range = fmt::format("bytes {}-{}/{}", pos, pos + content_length - 1, total_length);
+        auto chunk = std::make_unique<std::vector<uint8_t>>(bytes->begin() + (long) pos,
+                                                            bytes->begin() + (long) pos + (long) content_length);
+
+        log::info("Uploading range " + range);
+        res = _http_client.put(location)
+                .set_header("Content-Length", std::to_string(content_length))
+                .set_header("Content-Range", range)
+                .set_body(std::move(chunk))
+                .send();
+
+        if (!res->ok())
+            throw std::runtime_error("Could not upload part of file! " + res->string());
+
+        progress_func((double) ((long double) (pos + content_length) / (long double) total_length));
+    }
+
+    return res;
+}
+
+const cloud_storage_entry &google_drive::parse_json_entry(const cloud_storage_entry &parent, const json &entry) {
+    return cache_entry(cloud_storage_entry(
             entry["id"],
             parent.path() / entry["name"],
-            entry["mimeType"] == "application/vnd.google-apps.folder" ? save_storage_entry::directory
-                                                                      : save_storage_entry::file));
+            entry["mimeType"] == "application/vnd.google-apps.folder" ? cloud_storage_entry::directory
+                                                                      : cloud_storage_entry::file));
 }
