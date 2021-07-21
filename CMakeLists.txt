@@ -15,8 +15,14 @@ if (SWITCH)
     include_directories(${DEVKITPRO}/portlibs/switch/include)
 endif ()
 
-include_directories(lib/json/single_include)
+include_directories(lib/json/include)
+add_subdirectory(lib/json)
+
 include_directories(lib/cereal/include)
+add_subdirectory(lib/cereal)
+
+include_directories(lib/fmt/include)
+add_subdirectory(lib/fmt)
 
 add_subdirectory(save_switch_common)
 

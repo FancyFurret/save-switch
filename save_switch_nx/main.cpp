@@ -12,6 +12,8 @@ int run_app() {
     hidInitialize();
     accountInitialize(AccountServiceType_System);
 
+    nxlinkStdio();
+
     printf("Welcome to SaveSwitch!\n");
 
     printf("Loading save_switch_nx config\n");
@@ -29,11 +31,14 @@ int run_app() {
         printf("Done!");
     }
 
-    for (const auto &entry : storage->get_entries("SaveSwitch"))
-        log::info("Found existing entry: " + entry.get().name());
-
     printf("Getting SaveSwitch folder\n");
-    const auto &folder = storage->get_or_create_folder("SaveSwitch");
+    storage->create_directories("SaveSwitch/TestData");
+
+    printf("Uploading file...");
+    std::string file_contents = "Hello world this is a file uploaded from the magical switch :) 🎮";
+    storage->create_file("/SaveSwitch/TestData/hello_there.txt", file_contents, [](double p) {
+        log::info("Upload progress: " + std::to_string(std::floor((p * 100))) + "%");
+    });
 
     printf("Loading save data from switch...");
     switch_data data;
@@ -45,6 +50,7 @@ int run_app() {
         consoleUpdate(nullptr);
     }
 
+    socketExit();
     consoleExit(nullptr);
     delete storage;
     return 0;

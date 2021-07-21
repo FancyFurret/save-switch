@@ -16,7 +16,14 @@ add_library(${TARGET_NAME}
         save_storage/save_storage_errors.h
         save_storage/save_storage_errors.h
         save_storage/filepath.cpp
-        save_storage/filepath.h secrets.h)
+        save_storage/filepath.h
+        secrets.h
+        http_client/http_response.cpp
+        http_client/http_response.h
+        terminal.h
+        http_client/http_request.cpp
+        http_client/http_request.h
+        http_client/http_types.h)
 
 find_library(CURL_LIBRARY NAMES curl)
 target_link_libraries(${TARGET_NAME} ${CURL_LIBRARY})
@@ -24,6 +31,9 @@ target_include_directories(${TARGET_NAME} PUBLIC ${CURL_INCLUDE_DIRS})
 
 find_library(Z_LIBRARY NAMES z)
 target_link_libraries(${TARGET_NAME} ${Z_LIBRARY})
+
+target_link_libraries(${TARGET_NAME} nlohmann_json)
+target_link_libraries(${TARGET_NAME} fmt)
 
 if (SWITCH)
     target_link_libraries(${TARGET_NAME} ${LIBNX_LIBRARIES})

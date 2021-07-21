@@ -1,4 +1,5 @@
 #include "google_drive.h"
+#include <fmt/format.h>
 #include <save_switch_common/save_storage/save_storage_errors.h>
 #include <save_switch_common/log.h>
 
@@ -15,11 +16,12 @@ const save_storage_entry &google_drive::get_parent_entry(const save_storage_entr
     q << "'" << parent.id() << "' in parents and ";
     q << "trashed=false";
 
-    nlohmann::json res = _http_client.get_json("https://www.googleapis.com/drive/v3/files", params {
-            { "q",        q.str() },
-            { "spaces",   "drive" },
-            { "pageSize", "1" },
-    });
+    nlohmann::json res = _http_client.get("https://www.googleapis.com/drive/v3/files")
+            .set_query(params {
+                    { "q",        q.str() },
+                    { "spaces",   "drive" },
+                    { "pageSize", "1" },
+            }).send()->json();
     ensure_ok(res);
 
     if (res["files"].size() != 1)
@@ -34,11 +36,12 @@ google_drive::entry_list google_drive::get_parent_entries(const save_storage_ent
     q << "'" << parent.id() << "' in parents and ";
     q << "trashed=false";
 
-    nlohmann::json res = _http_client.get_json("https://www.googleapis.com/drive/v3/files", params {
-            { "q",        q.str() },
-            { "spaces",   "drive" },
-            { "pageSize", "100" },
-    });
+    nlohmann::json res = _http_client.get("https://www.googleapis.com/drive/v3/files")
+            .set_query(params {
+                    { "q",        q.str() },
+                    { "spaces",   "drive" },
+                    { "pageSize", "100" },
+            }).send()->json();
     ensure_ok(res);
 
     entry_list entries;
@@ -48,15 +51,60 @@ google_drive::entry_list google_drive::get_parent_entries(const save_storage_ent
     return entries;
 }
 
-const save_storage_entry &
-google_drive::create_parent_folder(const save_storage_entry &parent, const std::string &name) {
-    nlohmann::json res = _http_client.post_json("https://www.googleapis.com/drive/v3/files", json {
-            { "parents",  { parent.id() }},
-            { "name",     name },
-            { "mimeType", "application/vnd.google-apps.folder" }
-    });
+const save_storage_entry &google_drive::create_parent_directory(const save_storage_entry &parent,
+                                                                const std::string &name) {
+    nlohmann::json res = _http_client.post("https://www.googleapis.com/drive/v3/files")
+            .set_body(json {
+                    { "parents",  { parent.id() }},
+                    { "name",     name },
+                    { "mimeType", "application/vnd.google-apps.folder" }
+            }).send()->json();
     ensure_ok(res);
     return parse_json_entry(parent, res);
+}
+
+const save_storage_entry &google_drive::create_parent_file(const save_storage_entry &parent, const std::string &name,
+                                                           const std::vector<uint8_t> &bytes,
+                                                           const save_storage::progress_func &progress_func) {
+    auto res = _http_client.post("https://www.googleapis.com/upload/drive/v3/files")
+            .set_header("X-Upload-Content-Type", "application/octet-stream")
+            .set_header("X-Upload-Content-Length", std::to_string(bytes.size()))
+            .set_query(params {
+                    { "uploadType", "resumable" }
+            })
+            .set_body(json {
+                    { "parents", { parent.id() }},
+                    { "name",    name }
+            }).send();
+
+    if (!res->has_header("Location"))
+        throw std::runtime_error("Could not start file upload, no location header!");
+
+    std::string location = res->get_header("Location");
+
+    static const size_t chunk_size = 256 * 1024;
+    size_t total_length = bytes.size();
+
+    for (size_t pos = 0; pos < total_length; pos += chunk_size) {
+        size_t content_length = (pos + chunk_size) <= total_length ? chunk_size : total_length - pos;
+        std::string range = fmt::format("bytes {}-{}/{}", pos, pos + content_length - 1, total_length);
+        auto chunk = std::make_unique<std::vector<uint8_t>>(bytes.begin() + (long) pos,
+                                                            bytes.begin() + (long) pos + (long) content_length);
+
+        log::info("Uploading range " + range);
+        res = _http_client.put(location)
+                .set_header("Content-Length", std::to_string(content_length))
+                .set_header("Content-Range", range)
+                .set_body(std::move(chunk))
+                .send();
+
+        if (!res->ok())
+            throw std::runtime_error("Could not upload part of file! " + res->string());
+
+        progress_func((double) ((long double) (pos + content_length) / (long double) total_length));
+    }
+
+    return parse_json_entry(parent, res->json());
 }
 
 const save_storage_entry &google_drive::create_root_entry() {
@@ -68,10 +116,11 @@ bool google_drive::is_authenticated() {
 }
 
 bool google_drive::authenticate() {
-    nlohmann::json res = _http_client.post_json("https://oauth2.googleapis.com/device/code", params {
-            { "client_id", GOOGLE_CLIENT_ID },
-            { "scope", "https://www.googleapis.com/auth/drive.file" }
-    });
+    nlohmann::json res = _http_client.post("https://oauth2.googleapis.com/device/code")
+            .set_body(params {
+                    { "client_id", GOOGLE_CLIENT_ID },
+                    { "scope", "https://www.googleapis.com/auth/drive.file" }
+            }).send()->json();
 
     std::string device_code = res["device_code"];
     std::string code = res["user_code"];
@@ -114,17 +163,19 @@ bool google_drive::authenticate() {
 }
 
 bool google_drive::verify_access_token() {
-    nlohmann::json res = _http_client.post_json("https://www.googleapis.com/oauth2/v1/tokeninfo", params {
-            { "access_token", _access_token }
-    });
+    nlohmann::json res = _http_client.post("https://www.googleapis.com/oauth2/v1/tokeninfo")
+            .set_body(params {
+                    { "access_token", _access_token }
+            }).send()->json();
 
     if (res.contains("error")) {
-        res = _http_client.post_json("https://oauth2.googleapis.com/token", params {
-                { "client_id",     GOOGLE_CLIENT_ID },
-                { "client_secret", GOOGLE_CLIENT_SECRET },
-                { "grant_type",    "refresh_token" },
-                { "refresh_token", _cache->google_refresh_token() }
-        });
+        res = _http_client.post("https://oauth2.googleapis.com/token")
+                .set_body(params {
+                        { "client_id",     GOOGLE_CLIENT_ID },
+                        { "client_secret", GOOGLE_CLIENT_SECRET },
+                        { "grant_type",    "refresh_token" },
+                        { "refresh_token", _cache->google_refresh_token() }
+                }).send()->json();
 
         if (res.contains("error")) {
             log::error("Could not get new access token! Resetting refresh token...");
@@ -134,18 +185,19 @@ bool google_drive::verify_access_token() {
         _access_token = res["access_token"];
     }
 
-    _http_client.set_header("Authorization", "Bearer " + _access_token);
+    _http_client.set_auth_header("Bearer " + _access_token);
     return true;
 }
 
 bool google_drive::poll_auth_code(const std::string &device_code) {
     log::info("Polling auth code");
-    nlohmann::json res = _http_client.post_json("https://oauth2.googleapis.com/token", params {
-            { "client_id",     GOOGLE_CLIENT_ID },
-            { "client_secret", GOOGLE_CLIENT_SECRET },
-            { "device_code", device_code },
-            { "grant_type",  "urn:ietf:params:oauth:grant-type:device_code" }
-    });
+    nlohmann::json res = _http_client.post("https://oauth2.googleapis.com/token")
+            .set_body(params {
+                    { "client_id",     GOOGLE_CLIENT_ID },
+                    { "client_secret", GOOGLE_CLIENT_SECRET },
+                    { "device_code", device_code },
+                    { "grant_type",  "urn:ietf:params:oauth:grant-type:device_code" }
+            }).send()->json();
 
     if (res.contains("error"))
         return false;

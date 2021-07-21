@@ -15,23 +15,31 @@ class save_storage {
 
 public:
     typedef std::vector<std::reference_wrapper<const save_storage_entry>> entry_list;
+    typedef std::function<void(double progress)> progress_func;
 
     virtual void init();
 
     const save_storage_entry &get_entry(const filepath &path);
     entry_list get_entries(const filepath &path);
-    const save_storage_entry &get_or_create_folder(const filepath &path);
-    bool folder_exists(const filepath &path);
+    bool directory_exists(const filepath &path);
     bool file_exists(const filepath &path);
-    const save_storage_entry &create_folder(const filepath &path);
+    const save_storage_entry &create_directory(const filepath &path);
+    const save_storage_entry &create_directories(const filepath &path);
+    const save_storage_entry &create_file(
+            const filepath &path, const std::string &text, const progress_func &progress_func = nullptr);
+    const save_storage_entry &create_file(
+            const filepath &path, const std::vector<uint8_t> &bytes, const progress_func &progress_func = nullptr);
 
     virtual ~save_storage() = default;
 
 protected:
     virtual const save_storage_entry &get_parent_entry(const save_storage_entry &parent, const std::string &name) = 0;
     virtual entry_list get_parent_entries(const save_storage_entry &parent) = 0;
-    virtual const save_storage_entry &
-    create_parent_folder(const save_storage_entry &parent, const std::string &name) = 0;
+    virtual const save_storage_entry &create_parent_directory(
+            const save_storage_entry &parent, const std::string &name) = 0;
+    virtual const save_storage_entry &create_parent_file(
+            const save_storage_entry &parent, const std::string &name, const std::vector<uint8_t> &bytes,
+            const progress_func &progress_func) = 0;
     virtual const save_storage_entry &create_root_entry() = 0;
 
     bool is_cached(const std::string &id);

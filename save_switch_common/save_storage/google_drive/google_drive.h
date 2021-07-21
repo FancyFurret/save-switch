@@ -23,7 +23,10 @@ public:
 protected:
     const save_storage_entry &get_parent_entry(const save_storage_entry &parent, const std::string &name) override;
     entry_list get_parent_entries(const save_storage_entry &parent) override;
-    const save_storage_entry &create_parent_folder(const save_storage_entry &parent, const std::string &name) override;
+    const save_storage_entry &create_parent_directory(const save_storage_entry &parent, const std::string &name) override;
+    const save_storage_entry &create_parent_file(
+            const save_storage_entry &parent, const std::string &name, const std::vector<uint8_t> &bytes,
+            const progress_func &progress_func) override;
     const save_storage_entry &create_root_entry() override;
 
 private:

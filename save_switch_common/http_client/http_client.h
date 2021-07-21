@@ -5,34 +5,28 @@
 #include <string>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
-
-typedef nlohmann::json json;
-typedef std::unordered_map<std::string, std::string> params;
+#include "http_response.h"
+#include "http_request.h"
 
 class http_client {
-    CURL *_curl;
-    CURLcode _res;
-    curl_slist *_user_headers;
-    curl_slist *_headers;
+    CURL *_curl = nullptr;
+    CURLcode _res = CURLE_OK;
+    headers _headers;
 
 public:
     void init();
+    virtual ~http_client();
 
-    void set_header(const std::string &name, const std::string &value);
+    void set_auth_header(const std::string &value);
 
-    std::string get_string(const std::string &url, const params &params);
-    nlohmann::json get_json(const std::string &url, const params &params);
+    http_request get(const std::string &url);
+    http_request post(const std::string &url);
+    http_request put(const std::string &url);
 
-    std::string post_string(const std::string &url, const std::string &body);
-    std::string post_string(const std::string &url, const params &body);
-    std::string post_string(const std::string &url, const json &body);
-    nlohmann::json post_json(const std::string &url, const std::string &body);
-    nlohmann::json post_json(const std::string &url, const params &body);
-    nlohmann::json post_json(const std::string &url, const json &body);
+    std::unique_ptr<const http_response> send(const http_request &request);
 
-private:
-    std::string params_to_string(const params &params);
-    std::string perform();
+    [[nodiscard]] std::vector<std::string> get_header_list(const headers &headers) const;
+    [[nodiscard]] std::string get_query_string(const params &params) const;
 };
 
 #endif

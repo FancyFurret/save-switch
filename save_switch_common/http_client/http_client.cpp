@@ -4,55 +4,131 @@
 void http_client::init() {
     _curl = curl_easy_init();
     if (!_curl)
-        log::error("Could not init curl!");
+        throw std::runtime_error("Could not init curl!");
 }
 
-void http_client::set_header(const std::string &name, const std::string &value) {
-    std::string header = name + ": " + value;
-    _user_headers = curl_slist_append(_user_headers, header.c_str());
+http_client::~http_client() {
+    curl_easy_cleanup(_curl);
 }
 
-std::string http_client::get_string(const std::string &url, const params &params) {
+void http_client::set_auth_header(const std::string &value) {
+    _headers["Authorization"] = value;
+}
+
+http_request http_client::get(const std::string &url) {
     log::info("Sending GET request to " + url);
-    curl_easy_reset(_curl);
-    curl_easy_setopt(_curl, CURLOPT_URL, (url + "?" + params_to_string(params)).c_str());
-    return perform();
+    return http_request(this, url, http_request::method::get);
 }
 
-nlohmann::json http_client::get_json(const std::string &url, const params &params) {
-    return nlohmann::json::parse(get_string(url, params));
-}
-
-std::string http_client::post_string(const std::string &url, const std::string &body) {
+http_request http_client::post(const std::string &url) {
     log::info("Sending POST request to " + url);
+    return http_request(this, url, http_request::method::post);
+}
+
+http_request http_client::put(const std::string &url) {
+    log::info("Sending PUT request to " + url);
+    return http_request(this, url, http_request::method::put);
+}
+
+std::unique_ptr<const http_response> http_client::send(const http_request &request) {
+    auto res = std::make_unique<http_response>();
+
+    // Reset
     curl_easy_reset(_curl);
-    curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, body.c_str());
-    return perform();
+    curl_easy_setopt(_curl, CURLOPT_VERBOSE, true);
+
+    // URL
+    if (request._has_query)
+        curl_easy_setopt(_curl, CURLOPT_URL, (request._url + "?" + get_query_string(request._query)).c_str());
+    else
+        curl_easy_setopt(_curl, CURLOPT_URL, request._url.c_str());
+
+    // Method
+    switch (request._method) {
+        case http_request::get:
+            break;
+        case http_request::post:
+            curl_easy_setopt(_curl, CURLOPT_POST, true);
+            break;
+        case http_request::put:
+            curl_easy_setopt(_curl, CURLOPT_PUT, true);
+            break;
+    }
+
+    // Headers
+    curl_slist *headers = nullptr;
+    for (const auto &header : get_header_list(request._headers))
+        headers = curl_slist_append(headers, header.c_str());
+    for (const auto &header : get_header_list(_headers))
+        headers = curl_slist_append(headers, header.c_str());
+    curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, headers);
+
+    // Body
+    if (request._has_body) {
+        curl_easy_setopt(_curl, CURLOPT_INFILESIZE_LARGE, request._body->size());
+        curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE_LARGE, request._body->size());
+        curl_easy_setopt(_curl, CURLOPT_READDATA, request._body.get());
+        curl_easy_setopt(_curl, CURLOPT_READFUNCTION, static_cast<size_t (*)(char *, size_t, size_t, void *)>(
+                [](char *ptr, size_t size, size_t nmemb, void *result_body) {
+                    size_t size_in = size * nmemb;
+                    auto *data = (std::vector<uint8_t> *) result_body;
+                    size_t size_read = std::min(data->size(), size_in);
+                    std::memcpy(ptr, data->data(), size_read);
+                    return size_read;
+                }
+        ));
+    }
+
+    // Response Data
+    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res->_data);
+    curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, static_cast<size_t (*)(char *, size_t, size_t, void *)>(
+            [](char *ptr, size_t size, size_t nmemb, void *result_body) {
+                size_t size_in = size * nmemb;
+                auto *data = (std::vector<uint8_t> *) result_body;
+                data->reserve(size_in);
+                data->insert(data->end(), ptr, ptr + size_in);
+                return size_in;
+            }
+    ));
+
+    // Response Headers
+    curl_easy_setopt(_curl, CURLOPT_HEADERDATA, &res->_headers);
+    curl_easy_setopt(_curl, CURLOPT_HEADERFUNCTION, static_cast<size_t (*)(char *, size_t, size_t, void *)>(
+            [](char *ptr, size_t size, size_t nmemb, void *result_body) {
+                size_t size_in = size * nmemb;
+                auto *data = (std::unordered_map<std::string, std::string> *) result_body;
+                auto str = std::string(ptr, size_in);
+                str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
+                str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
+
+                size_t pos = str.find(": ");
+                if (pos != std::string::npos)
+                    data->emplace(str.substr(0, pos), str.substr(pos + 2, str.size()));
+
+                return size_in;
+            }
+    ));
+
+    _res = curl_easy_perform(_curl);
+    curl_slist_free_all(headers);
+
+    if (_res != CURLE_OK) {
+        std::string err_string = curl_easy_strerror(_res);
+        throw std::runtime_error("Perform failed: " + err_string);
+    }
+
+    curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &res->_code);
+    return res;
 }
 
-std::string http_client::post_string(const std::string &url, const params &body) {
-    return post_string(url, params_to_string(body));
+std::vector<std::string> http_client::get_header_list(const headers &headers) const {
+    std::vector<std::string> list;
+    for (const auto &kv : headers)
+        list.emplace_back(kv.first + ": " + kv.second);
+    return list;
 }
 
-std::string http_client::post_string(const std::string &url, const json &body) {
-    _headers = curl_slist_append(_headers, "Content-Type: application/json");
-    return post_string(url, body.dump());
-}
-
-nlohmann::json http_client::post_json(const std::string &url, const std::string &body) {
-    return nlohmann::json::parse(post_string(url, body));
-}
-
-nlohmann::json http_client::post_json(const std::string &url, const params &body) {
-    return nlohmann::json::parse(post_string(url, body));
-}
-
-nlohmann::json http_client::post_json(const std::string &url, const json &body) {
-    return nlohmann::json::parse(post_string(url, body));
-}
-
-std::string http_client::params_to_string(const params &params) {
+std::string http_client::get_query_string(const params &params) const {
     std::string fields;
     for (const auto &kv : params) {
         if (!fields.empty())
@@ -63,34 +139,4 @@ std::string http_client::params_to_string(const params &params) {
         curl_free(escaped);
     }
     return fields;
-}
-
-std::string http_client::perform() {
-    std::string result_body;
-
-    curl_slist *current = _user_headers;
-    while (current != nullptr) {
-        _headers = curl_slist_append(_headers, current->data);
-        current = current->next;
-    }
-
-    curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, _headers);
-    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &result_body);
-    curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, static_cast<size_t (*)(char *, size_t, size_t, void *)>(
-            [](char *ptr, size_t size, size_t nmemb, void *result_body) {
-                *(static_cast<std::string *>(result_body)) += std::string { ptr, size * nmemb };
-                return size * nmemb;
-            }
-    ));
-
-    _res = curl_easy_perform(_curl);
-    curl_slist_free_all(_headers);
-    _headers = nullptr;
-
-    if (_res != CURLE_OK) {
-        std::string err_string = curl_easy_strerror(_res);
-        throw std::runtime_error("Perform failed: " + err_string);
-    }
-
-    return result_body;
 }
