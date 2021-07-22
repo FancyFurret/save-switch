@@ -10,3 +10,6 @@
 [submodule "lib/fmt"]
 	path = lib/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "lib/hash-library"]
+	path = lib/hash-library/include/hash-library
+	url = https://github.com/stbrumme/hash-library

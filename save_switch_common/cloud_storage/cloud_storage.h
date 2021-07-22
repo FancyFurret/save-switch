@@ -7,12 +7,15 @@
 #include <functional>
 #include <save_switch_common/cloud_storage/google_drive/google_drive_cache.h>
 #include <save_switch_common/http_client/http_types.h>
+#include <hash-library/md5.h>
 #include "cloud_storage_entry.h"
 
 class cloud_storage {
     std::unordered_map<std::string, cloud_storage_entry> _entries;
     std::unordered_map<filepath, const cloud_storage_entry *> _entry_paths;
     const cloud_storage_entry *_root = nullptr;
+
+    MD5 _md_5_hasher;
 
 public:
     typedef std::vector<std::reference_wrapper<const cloud_storage_entry>> entry_list;

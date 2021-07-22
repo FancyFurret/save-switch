@@ -34,6 +34,7 @@ target_link_libraries(${TARGET_NAME} ${Z_LIBRARY})
 
 target_link_libraries(${TARGET_NAME} nlohmann_json)
 target_link_libraries(${TARGET_NAME} fmt)
+target_link_libraries(${TARGET_NAME} hash-library)
 
 if (SWITCH)
     target_link_libraries(${TARGET_NAME} ${LIBNX_LIBRARIES})

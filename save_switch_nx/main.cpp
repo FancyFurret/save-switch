@@ -34,7 +34,7 @@ void run_app() {
 }
 
 void wait_for_exit() {
-    std::cout << "Press + to exit..." << std::endl;
+    std::cout << std::endl << "Press + to exit..." << std::endl;
 
     PadState pad_state;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);

@@ -16,6 +16,14 @@ void log::info(const std::string &message) {
 #endif
 }
 
+void log::warn(const std::string &message) {
+    std::cout << "[" << term::color::yellow << "WARN" << term::reset << "] " << message << std::endl;
+
+#ifdef SWITCH
+    consoleUpdate(nullptr);
+#endif
+}
+
 void log::error(const std::string &message) {
     std::cout << "[" << term::color::red << "ERROR" << term::reset << "] " << message << std::endl;
 

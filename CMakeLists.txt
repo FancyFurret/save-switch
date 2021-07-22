@@ -27,6 +27,9 @@ add_subdirectory(lib/cereal)
 include_directories(lib/fmt/include)
 add_subdirectory(lib/fmt)
 
+include_directories(lib/hash-library/include)
+add_subdirectory(lib/hash-library)
+
 add_subdirectory(save_switch_common)
 
 if (SWITCH)

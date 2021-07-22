@@ -16,18 +16,17 @@ void save_switch::update_cloud_switch_info() {
     log::info("Updating switch info in cloud");
 
     ss << "Users" << std::endl;
-    ss << "=====" << std::endl;
+    ss << "================================" << std::endl;
     for (const auto &user : _data->users())
         ss << user.second.id() << " - " << user.second.name() << std::endl;
     ss << std::endl << std::endl;
 
     ss << "Titles" << std::endl;
-    ss << "======" << std::endl;
+    ss << "===============" << std::endl;
     for (const auto &app : _data->apps())
         ss << app.second.id() << " - " << app.second.name() << std::endl;
     ss << std::endl << std::endl << std::endl;
 
-    // TODO: Only upload if hash is different
     _storage->create_file("/SaveSwitch/SwitchIds.txt", ss.str(), true);
 }
 

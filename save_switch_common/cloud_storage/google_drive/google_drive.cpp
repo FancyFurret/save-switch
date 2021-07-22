@@ -20,6 +20,7 @@ const cloud_storage_entry &google_drive::get_parent_entry(const cloud_storage_en
                     { "q",        q.str() },
                     { "spaces",   "drive" },
                     { "pageSize", "1" },
+                    { "fields",   _file_fields }
             }).send()->json();
     ensure_ok(res);
 
@@ -40,6 +41,7 @@ google_drive::entry_list google_drive::get_parent_entries(const cloud_storage_en
                     { "q",        q.str() },
                     { "spaces",   "drive" },
                     { "pageSize", "100" },
+                    { "fields",   _file_fields }
             }).send()->json();
     ensure_ok(res);
 
@@ -236,9 +238,23 @@ std::unique_ptr<const http_response> google_drive::resumable_chunk_upload(const 
 }
 
 const cloud_storage_entry &google_drive::parse_json_entry(const cloud_storage_entry &parent, const json &entry) {
-    return cache_entry(cloud_storage_entry(
-            entry["id"],
-            parent.path() / entry["name"],
-            entry["mimeType"] == "application/vnd.google-apps.folder" ? cloud_storage_entry::directory
-                                                                      : cloud_storage_entry::file));
+    std::string id = entry["id"];
+    filepath path = parent.path() / entry["name"];
+    if (entry["mimeType"] == "application/vnd.google-apps.folder")
+        return cache_entry(cloud_storage_entry(id, path, cloud_storage_entry::directory));
+
+    std::string hash;
+    if (entry.contains("md5Checksum")) {
+        hash = entry["md5Checksum"];
+    } else {
+        log::warn("File does not have checksum! Sending second file request");
+        nlohmann::json res = _http_client.get("https://www.googleapis.com/drive/v3/files/" + id)
+                .set_query(params {
+                        { "fields", "md5Checksum" }
+                }).send()->json();
+        ensure_ok(res);
+        hash = res["md5Checksum"];
+    }
+
+    return cache_entry(cloud_storage_entry(id, path, cloud_storage_entry::file, hash, cloud_storage_entry::md_5));
 }

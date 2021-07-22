@@ -11,6 +11,8 @@
 #endif
 
 class google_drive : public cloud_storage {
+    const std::string _file_fields = "files(id,name,mimeType,md5Checksum)";
+
     http_client _http_client;
     std::string _access_token;
     google_drive_cache *_cache;
